@@ -1,20 +1,27 @@
-﻿using System.IO;
-using System.Management;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace Mini_Download_Manager;
+
+using System;
+using System.IO;
+using System.Management;
+using System.Runtime.InteropServices;
 
 public class WindowsSystemInfo
 {
     public static int GetOsVersion()
     {
         var osStr = RuntimeInformation.OSDescription;
-        var regex = new Regex(@"Microsoft Windows (\d+).\d+.\d+");
-        var match = regex.Match(osStr);
-        if (match.Success) return int.Parse(match.Groups[1].Value);
-
-        throw new Exception("Unable to determine OS version");
+        Regex regex = new Regex(@"Microsoft Windows (\d+).\d+.\d+");
+        Match match = regex.Match(osStr);
+        if (match.Success)
+        {
+            return int.Parse(match.Groups[1].Value);
+        }
+        else
+        {
+            throw new Exception("Unable to determine OS version");
+        }
     }
 
     public static long GetTotalRam()
@@ -27,7 +34,7 @@ public class WindowsSystemInfo
             totalRam += long.Parse(wmi["TotalVisibleMemorySize"].ToString() ?? string.Empty);
         }
 
-        totalRam /= 1024; // Convert from KB to MB
+        totalRam /= 1024 ; // Convert from KB to MB
         return totalRam;
     }
 
@@ -35,10 +42,15 @@ public class WindowsSystemInfo
     {
         try
         {
-            var drive = new DriveInfo(driveName);
-            if (drive.IsReady) return drive.AvailableFreeSpace;
-
-            return -1; // Drive not ready
+            DriveInfo drive = new DriveInfo(driveName);
+            if (drive.IsReady)
+            {
+                return drive.AvailableFreeSpace;
+            }
+            else
+            {
+                return -1; // Drive not ready
+            }
         }
         catch (Exception)
         {
