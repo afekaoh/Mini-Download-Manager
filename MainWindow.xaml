@@ -4,31 +4,32 @@
         xmlns:miniDownloadManager="clr-namespace:Mini_Download_Manager"
         Title="Downloader Wizard" Height="400" Width="300">
     <Window.DataContext>
-        <miniDownloadManager:MainViewModel/>
+        <miniDownloadManager:MainViewModel />
     </Window.DataContext>
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
-    
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="5"/>
+        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="5" />
 
-        <Image Source="{Binding Image}" Height="150" Stretch="Uniform" Grid.Row="1" Margin="5"/>
-        
+        <Image Source="{Binding Image}" Height="150" Stretch="Uniform" Grid.Row="1" Margin="5" />
+
 
         <Button Content="Download File" Grid.Row="3" Margin="5"
                 Command="{Binding DownloadFileCommand}" Width="120" Height="30"
-                HorizontalAlignment="Center"/>
+                HorizontalAlignment="Center" />
 
         <ProgressBar Grid.Row="4" Height="20" Width="200" Margin="5"
-                     Value="{Binding Progress}" Maximum="100" Visibility="{Binding ShowProgress, Converter={StaticResource BoolToVis}}"/>
+                     Value="{Binding Progress}" Maximum="100"
+                     Visibility="{Binding ShowProgress, Converter={StaticResource BoolToVis}}" />
     </Grid>
 </Window>
