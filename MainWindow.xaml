@@ -21,7 +21,16 @@
 
         <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="5"/>
 
-        <Image Source="{Binding Image}" Height="150" Stretch="Uniform" Grid.Row="1" Margin="5"/>
+        <!-- Image and Loading Animation -->
+        <Grid Grid.Row="1" HorizontalAlignment="Center">
+            <Image Source="{Binding Image}" Height="150" Stretch="Uniform"/>
+            
+            <!-- Loading Spinner -->
+            <StackPanel Orientation="Vertical" Visibility="{Binding IsImageLoading, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Loading..." FontSize="14" FontWeight="SemiBold" Margin="50"/>
+                <ProgressBar IsIndeterminate="True" Width="100" Height="10"/>
+            </StackPanel>
+        </Grid>
         
 
         <Button Content="Download File" Grid.Row="3" Margin="5"

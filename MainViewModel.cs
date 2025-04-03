@@ -16,8 +16,19 @@ namespace Mini_Download_Manager
         private BitmapImage? _image;
         private int _progress;
         private bool _isDownloading;
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly HttpClient _httpClient = new();
         private readonly string _tempFolder = Path.GetTempPath();
+        private bool _isImageLoading;
+
+        public bool IsImageLoading
+        {
+            get => _isImageLoading;
+            set
+            {
+                _isImageLoading = value;
+                OnPropertyChanged("IsImageLoading");
+            }
+        }
 
         public string? Title
         {
@@ -63,6 +74,8 @@ namespace Mini_Download_Manager
 
         public MainViewModel()
         {
+            ShowProgress = false;
+            IsImageLoading = true;
             DownloadFileCommand = new RelayCommand(async () => await DownloadFileAsync());
 
             _ = FetchAndDisplayInfo();
@@ -77,54 +90,52 @@ namespace Mini_Download_Manager
         {
             try
             {
-                string jsonUrl = "https://4qgz7zu7l5um367pzultcpbhmm0thhhg.lambda-url.us-west-2.on.aws/";
-                string jsonData = await _httpClient.GetStringAsync(jsonUrl);
-                List<Dictionary<string, object>>? jsons =
-                    JsonSerializer.Deserialize<List<Dictionary<string, object>>>(jsonData);
-                
+                const string jsonUrl = "https://4qgz7zu7l5um367pzultcpbhmm0thhhg.lambda-url.us-west-2.on.aws/";
+                var jsonData = await _httpClient.GetStringAsync(jsonUrl);
+                var jsons = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(jsonData);
                 if (jsons == null)
                 {
                     MessageBox.Show("Failed to parse JSON data.");
                     return;
                 }
 
+                // foreach (var o in jsons.SelectMany(jsn => jsn))
+                // {
+                //     Console.WriteLine(o.Key + " : " + o.Value);
+                // }
+
                 var json = jsons
                     .Where(item => item.ContainsKey("Score"))
-                    // .Where(item =>
-                    // {
-                    //     if (item.TryGetValue("os", out var os))
-                    //     {
-                    //         if (os is JsonElement { ValueKind: JsonValueKind.Number } element)
-                    //         {
-                    //             return element.GetInt32() >= WindowsSystemInfo.GetOsVersion();
-                    //         }
-                    //     }
-                    //
-                    //     return true;
-                    // })
-                    // .Where(item =>
-                    // {
-                    //     if (item.TryGetValue("ram", out var ram))
-                    //     {
-                    //         if (ram is JsonElement { ValueKind: JsonValueKind.Number } element)
-                    //         {
-                    //             return element.GetInt32() <= WindowsSystemInfo.GetTotalRam();
-                    //         }
-                    //     }
-                    //
-                    //     return true;
-                    // })
-                    // .Where(item =>
-                    // {
-                    //     if (item.TryGetValue("disk", out var disk))
-                    //     {
-                    //         if (disk is JsonElement { ValueKind: JsonValueKind.Number } element)
-                    //         {
-                    //             return element.GetInt32() <= WindowsSystemInfo.GetAvailableDiskSpace("C");
-                    //         }
-                    //     }
-                    //     return true;
-                    // })
+                    .Where(item =>
+                    {
+                        if (!item.TryGetValue("os", out var os)) return true;
+                        if (os is JsonElement { ValueKind: JsonValueKind.Number } element)
+                        {
+                            return element.GetDouble() >= WindowsSystemInfo.GetOsVersion();
+                        }
+
+                        return true;
+                    })
+                    .Where(item =>
+                    {
+                        if (!item.TryGetValue("ram", out var ram)) return true;
+                        if (ram is JsonElement { ValueKind: JsonValueKind.Number } element)
+                        {
+                            return element.GetInt32() <= WindowsSystemInfo.GetTotalRam();
+                        }
+
+                        return true;
+                    })
+                    .Where(item =>
+                    {
+                        if (!item.TryGetValue("disk", out var disk)) return true;
+                        if (disk is JsonElement { ValueKind: JsonValueKind.Number } element)
+                        {
+                            return element.GetInt32() <= WindowsSystemInfo.GetAvailableDiskSpace("C");
+                        }
+
+                        return true;
+                    })
                     .Where(item =>
                     {
                         if (item["Score"] is JsonElement element)
@@ -161,23 +172,28 @@ namespace Mini_Download_Manager
         {
             try
             {
-                string fileName = Path.GetFileName(url);
-                string tempImagePath = Path.Combine(_tempFolder, fileName);
-
-                if (!File.Exists(tempImagePath))
+                var fileName = Path.GetFileName(url);
+                if (fileName != null)
                 {
-                    byte[] imageBytes = await _httpClient.GetByteArrayAsync(url);
-                    await File.WriteAllBytesAsync(tempImagePath, imageBytes);
+                    var tempImagePath = Path.Combine(_tempFolder, fileName);
+
+                    if (!File.Exists(tempImagePath))
+                    {
+                        var imageBytes = await _httpClient.GetByteArrayAsync(url);
+                        await File.WriteAllBytesAsync(tempImagePath, imageBytes);
+                    }
+
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(tempImagePath);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+
+                    Image = bitmap;
                 }
 
-                BitmapImage? bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri(tempImagePath);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                Image = bitmap;
+                IsImageLoading = false;
             }
             catch (Exception ex)
             {
@@ -201,20 +217,20 @@ namespace Mini_Download_Manager
             try
             {
                 ShowProgress = true;
-                using (HttpClient client = new HttpClient())
-                using (HttpResponseMessage response =
+                using (var client = new HttpClient())
+                using (var response =
                        await client.GetAsync(_fileUrl, HttpCompletionOption.ResponseHeadersRead))
                 using (Stream contentStream = await response.Content.ReadAsStreamAsync(),
                        stream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    byte[] buffer = new byte[8192];
-                    long totalBytes = response.Content.Headers.ContentLength ?? -1;
+                    var buffer = new byte[8192];
+                    var totalBytes = response.Content.Headers.ContentLength ?? -1;
                     long totalRead = 0;
                     int bytesRead;
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    while ((bytesRead = await contentStream.ReadAsync(buffer.AsMemory())) > 0)
                     {
-                        await stream.WriteAsync(buffer, 0, bytesRead);
+                        await stream.WriteAsync(buffer.AsMemory(0, bytesRead));
                         totalRead += bytesRead;
                         if (totalBytes > 0)
                         {
@@ -233,21 +249,12 @@ namespace Mini_Download_Manager
         }
     }
 
-    public class RelayCommand : ICommand
+    public class RelayCommand(Func<Task> execute, Func<bool>? canExecute = null) : ICommand
     {
-        private readonly Func<Task> execute;
-        private readonly Func<bool> canExecute;
+        public event EventHandler? CanExecuteChanged;
 
-        public RelayCommand(Func<Task> execute, Func<bool> canExecute = null)
-        {
-            this.execute = execute;
-            this.canExecute = canExecute;
-        }
+        public bool CanExecute(object? parameter) => canExecute == null || canExecute();
 
-        public event EventHandler CanExecuteChanged;
-
-        public bool CanExecute(object parameter) => canExecute == null || canExecute();
-
-        public async void Execute(object parameter) => await execute();
+        public async void Execute(object? parameter) => await execute();
     }
 }
